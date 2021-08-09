@@ -14,6 +14,7 @@ import os.path
 import time
 import rospy
 import rospkg
+from sensor_msgs.msg import Image
 from darknet_ros_msgs.msg import BoundingBoxes
 from std_msgs.msg import Int32MultiArray
 from std_msgs.msg import Int16MultiArray
@@ -32,7 +33,7 @@ def image_callback(data):
     cv_image = self.bridge.imgmsg_to_cv2(data)
     return cv_image
 
-def Cone_information(data):
+def BoundingBoxes_callback(data):
     cone_xmin = data.bounding_boxes[0].xmin
     cone_ymin=data.bounding_boxes[0].ymin #ymin
     cone_xmax=data.bounding_boxes[0].xmax #xmax
@@ -42,12 +43,11 @@ def Cone_information(data):
     cone_box_size = cal_boxsize(xmin,ymin,xmax,ymax)
     return  [cone_xmin,cone_ymin,cone_xmax,cone_ymax,cone_y_center,cone_x_center,cone_box_size]
 
-def BoundingBoxes_callback(data):
+def Cone_information(data):
     Blue_informations = []
     Yello_informations = []
     Blue_information = []
     Yello_information = []
-    
     Class=data.bounding_boxes[0].Class
     if (Class=='Blue_cone'):
         blue_cone_xmin,blue_cone_ymin,blue_cone_xmax,blue_cone_ymax,blue_cone_y_center,blue_cone_x_center,blue_cone_box_size = Cone_information(data)
@@ -67,11 +67,11 @@ if __name__ == '__main__':
     
     rospy.init_node('Track_mission', anonymous=True)
     Ori_Image=rospy.Subscriber("/darknet_ros/detection_image", Image, image_callback)
-    [Blue_information,Yello_information]=rospy.Subscriber("/darknet_ros/bounding_boxes", BoundingBoxes, BoundingBoxes_callback)
+    BoundingBoxes =rospy.Subscriber("/darknet_ros/bounding_boxes", BoundingBoxes, BoundingBoxes_callback)
     pub_traffic = rospy.Publisher('/detect/traffic_sign', Int32MultiArray, queue_size=10)
     pub_delivery = rospy.Publisher('/delivery_zone', Int16MultiArray, queue_size=10)
     rate = rospy.Rate(10)
-
+    
     traffic_array=Int32MultiArray()
     traffic_array.data=[0,0,0,0]
     delivery_alpha_A = String()
@@ -83,6 +83,7 @@ if __name__ == '__main__':
 
     while (True):
         try:
+            [Blue_informations,Yello_informations] = Cone_information(BoundingBoxes)
             pub_traffic_sign(label)
             pub_delivery_sign_A(label)
             pub_delivery_sign_B(label)
