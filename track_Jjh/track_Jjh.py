@@ -22,7 +22,7 @@ from std_msgs.msg import MultiArrayLayout
 from std_msgs.msg import String
 from geometry_msgs.msg import Point , PoseStamped
 
-def find_delta(image_shape, going_pixels, line_image):
+def find_delta(image_shape, going_pixels):
 
     ############################# angle1 ###################################
     #print(going_pixels[0]-(image_shape[1]/2))
@@ -62,8 +62,17 @@ def cal_boxsize(xmin,ymin,xmax,ymax):
     return boxsize
 
 def image_callback(data):
-    cv_image = self.bridge.imgmsg_to_cv2(data)
-    return cv_image
+    try: # Read the image from the input topic:
+        cv_image = self.bridge.imgmsg_to_cv2(data)
+    except CvBridgeError, e:
+            print e
+
+    frame = np.zeros((cv_image.shape[0],cv_image.shape[1],3),np.uint8)
+    frame[:,:,0] = cv_image
+    frame[:,:,1] = cv_image
+    frame[:,:,2] = cv_image
+    image_shape=[frame.shape[0],frame.shape[1]]
+    return image_shape
 
 def BoundingBoxes_callback(data):
     cone_xmin = data.bounding_boxes[0].xmin
@@ -98,9 +107,11 @@ def Select_biggest_box(data):
     biggest_box_information = np.array(data)[box_size_max_num,:]
     return biggest_box_information
     
-    
-
-
+def Make_pixel(box1_data,box2_data): #make target coordinates
+    x_cordination = (box1_data[5] + box2_data[5])/2
+    y_cordination = (box1_data[4] + box2_data[4])/2
+    going_pixels = [x_cordination,y_cordination]
+    return going_pixels
 
 if __name__ == '__main__':
     
@@ -116,6 +127,10 @@ if __name__ == '__main__':
             [Blue_informations,Yello_informations] = Cone_information(BoundingBoxes)
             Blue_biggest_box = Select_biggest_box(Blue_informations)
             Yello_biggest_box = Select_biggest_box(Yello_informations) #make_point
+            going_pixels = Make_pixel(Blue_biggest_box,Yello_biggest_box)
+            final_image, image_delta = find_delta(Ori_Image,going_pixels) #make_delta
+
+
             if cv2.waitKey(1) == ord('q'):
                 break
 
