@@ -118,19 +118,32 @@ if __name__ == '__main__':
     rospy.init_node('Track_mission', anonymous=True)
     Ori_Image=rospy.Subscriber("/darknet_ros/detection_image", Image, image_callback)
     BoundingBoxes =rospy.Subscriber("/darknet_ros/bounding_boxes", BoundingBoxes, BoundingBoxes_callback)
-    pub_traffic = rospy.Publisher('/detect/traffic_sign', Int32MultiArray, queue_size=10)
-    pub_delivery = rospy.Publisher('/delivery_zone', Int16MultiArray, queue_size=10)
+    image_publisher = rospy.Publisher("/final_image", Image, queue_size=100)
+    control_publisher = rospy.Publisher("/Lane_ack_vel", AckermannDriveStamped, queue_size=100)
     rate = rospy.Rate(10)
-
+    ackermann_cmd = AckermannDriveStamped()
     while (True):
         try:
             [Blue_informations,Yello_informations] = Cone_information(BoundingBoxes)
             Blue_biggest_box = Select_biggest_box(Blue_informations)
             Yello_biggest_box = Select_biggest_box(Yello_informations) #make_point
             going_pixels = Make_pixel(Blue_biggest_box,Yello_biggest_box)
+            
             final_image, image_delta = find_delta(Ori_Image,going_pixels) #make_delta
+            print(image_delta)
 
+            if (image_delta>28):
+                image_delta=28
+            elif(image_delta<-28):
+                image_delta=-28
 
+            L=1.3
+            ld=2.5
+            final_image_theta=math.atan(2*L*math.sin(image_delta*np.pi/180)/ld)*(180/np.pi)
+            ackermann_cmd.drive.steering_angle = final_image_theta * math.pi / 180
+            ackermann_cmd.drive.speed = 3.5
+            control_publisher.publish(ackermann_cmd) #publish
+            image_publisher.publish(self.bridge.cv2_to_imgmsg(final_image)) #publish
             if cv2.waitKey(1) == ord('q'):
                 break
 
