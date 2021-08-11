@@ -26,7 +26,7 @@ from geometry_msgs.msg import Point , PoseStamped
 from ackermann_msgs.msg import AckermannDriveStamped
 from cv_bridge import CvBridge, CvBridgeError
 def find_delta(image_shape, going_pixels):
-
+    123
     ############################# angle1 ###################################
     #print(going_pixels[0]-(image_shape[1]/2))
     angle_radian = math.atan(((going_pixels[0]-(image_shape[1]/2))/2)/(image_shape[0]-going_pixels[1])) ## /2
