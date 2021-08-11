@@ -4,7 +4,7 @@
 # Usage example:  python3 object_detection_yolo.py --video=run.mp4
 #                 python3 object_detection_yolo.py --image=bird.jpg
 
-import cv_bridge
+
 import sys
 sys.path.remove('/opt/ros/melodic/lib/python2.7/dist-packages')
 import cv2, time
@@ -12,8 +12,10 @@ sys.path.append('/opt/ros/melodic/lib/python2.7/dist-packages')
 import numpy as np
 import os.path
 import time
+import time
 import rospy
 import rospkg
+import cv_bridge
 from sensor_msgs.msg import Image
 from darknet_ros_msgs.msg import BoundingBoxes
 from std_msgs.msg import Int32MultiArray
@@ -21,7 +23,8 @@ from std_msgs.msg import Int16MultiArray
 from std_msgs.msg import MultiArrayLayout
 from std_msgs.msg import String
 from geometry_msgs.msg import Point , PoseStamped
-
+from ackermann_msgs.msg import AckermannDriveStamped
+from cv_bridge import CvBridge, CvBridgeError
 def find_delta(image_shape, going_pixels):
 
     ############################# angle1 ###################################
@@ -63,10 +66,10 @@ def cal_boxsize(xmin,ymin,xmax,ymax):
 
 def image_callback(data):
     try: # Read the image from the input topic:
-        cv_image = self.bridge.imgmsg_to_cv2(data)
+        cv_image = bridge.imgmsg_to_cv2(data)
     except CvBridgeError, e:
             print e
-
+    
     frame = np.zeros((cv_image.shape[0],cv_image.shape[1],3),np.uint8)
     frame[:,:,0] = cv_image
     frame[:,:,1] = cv_image
@@ -76,26 +79,28 @@ def image_callback(data):
 
 def BoundingBoxes_callback(data):
     cone_xmin = data.bounding_boxes[0].xmin
-    cone_ymin=data.bounding_boxes[0].ymin #ymin
-    cone_xmax=data.bounding_boxes[0].xmax #xmax
-    cone_ymax=data.bounding_boxes[0].ymax #ymax
-    cone_y_center = (ymax+ymin)/2
-    cone_x_center = (xmax+xmin)/2
-    cone_box_size = cal_boxsize(xmin,ymin,xmax,ymax)
-    return  [cone_xmin,cone_ymin,cone_xmax,cone_ymax,cone_y_center,cone_x_center,cone_box_size]
+    cone_ymin = data.bounding_boxes[0].ymin #ymin
+    cone_xmax = data.bounding_boxes[0].xmax #xmax
+    cone_ymax = data.bounding_boxes[0].ymax #ymax
+    cone_class = data.bounding_boxes[0].Class
+    cone_y_center = (cone_ymax+cone_ymin)/2
+    cone_x_center = (cone_xmax+cone_xmin)/2
+    cone_box_size = cal_boxsize(cone_xmin,cone_ymin,cone_xmax,cone_ymax)
+    
+    return  [cone_xmin,cone_ymin,cone_xmax,cone_ymax,cone_y_center,cone_x_center,cone_box_size,cone_class]
 
 def Cone_information(data):
     Blue_informations = []
     Yello_informations = []
     Blue_information = []
     Yello_information = []
-    Class=data.bounding_boxes[0].Class
-    if (Class=='Blue_cone'):
-        blue_cone_xmin,blue_cone_ymin,blue_cone_xmax,blue_cone_ymax,blue_cone_y_center,blue_cone_x_center,blue_cone_box_size = data
+    Class=data[7]
+    if (Class=='blue'):
+        blue_cone_xmin,blue_cone_ymin,blue_cone_xmax,blue_cone_ymax,blue_cone_y_center,blue_cone_x_center,blue_cone_box_size = data[0:7]
         Blue_information = [blue_cone_xmin,blue_cone_ymin,blue_cone_xmax,blue_cone_ymax,blue_cone_y_center,blue_cone_x_center,blue_cone_box_size]
         Blue_informations.append(Blue_information)
-    elif (Class=='Yello_cone'):
-       [yello_cone_xmin,yello_cone_ymin,yello_cone_xmax,yello_cone_ymax,yello_cone_y_center,yello_cone_x_center,yello_cone_box_size] = data
+    elif (Class=='yellow'):
+       [yello_cone_xmin,yello_cone_ymin,yello_cone_xmax,yello_cone_ymax,yello_cone_y_center,yello_cone_x_center,yello_cone_box_size] = data[0:7]
        Yello_information = [yello_cone_xmin,yello_cone_ymin,yello_cone_xmax,yello_cone_ymax,yello_cone_y_center,yello_cone_x_center,yello_cone_box_size]
        Yello_informations.append(Yello_information)
     print(Blue_informations,Yello_informations)
@@ -116,19 +121,19 @@ def Make_pixel(box1_data,box2_data): #make target coordinates
 if __name__ == '__main__':
     
     rospy.init_node('Track_mission', anonymous=True)
-    Ori_Image=rospy.Subscriber("/darknet_ros/detection_image", Image, image_callback)
-    BoundingBoxes =rospy.Subscriber("/darknet_ros/bounding_boxes", BoundingBoxes, BoundingBoxes_callback)
+    bridge = CvBridge()
+    Ori_Image=rospy.Subscriber("darknet_ros/detection_image", Image, image_callback)
+    BoundingBox =rospy.Subscriber("darknet_ros/bounding_boxes", BoundingBoxes, BoundingBoxes_callback)
     image_publisher = rospy.Publisher("/final_image", Image, queue_size=100)
     control_publisher = rospy.Publisher("/Lane_ack_vel", AckermannDriveStamped, queue_size=100)
     rate = rospy.Rate(10)
     ackermann_cmd = AckermannDriveStamped()
     while (True):
         try:
-            [Blue_informations,Yello_informations] = Cone_information(BoundingBoxes)
+            [Blue_informations,Yello_informations] = Cone_information(BoundingBox)
             Blue_biggest_box = Select_biggest_box(Blue_informations)
             Yello_biggest_box = Select_biggest_box(Yello_informations) #make_point
             going_pixels = Make_pixel(Blue_biggest_box,Yello_biggest_box)
-            
             final_image, image_delta = find_delta(Ori_Image,going_pixels) #make_delta
             print(image_delta)
 
@@ -143,7 +148,7 @@ if __name__ == '__main__':
             ackermann_cmd.drive.steering_angle = final_image_theta * math.pi / 180
             ackermann_cmd.drive.speed = 3.5
             control_publisher.publish(ackermann_cmd) #publish
-            image_publisher.publish(self.bridge.cv2_to_imgmsg(final_image)) #publish
+            image_publisher.publish(bridge.cv2_to_imgmsg(final_image)) #publish
             if cv2.waitKey(1) == ord('q'):
                 break
 
