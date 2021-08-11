@@ -65,19 +65,20 @@ def cal_boxsize(xmin,ymin,xmax,ymax):
     return boxsize
 
 def image_callback(data):
+    global image_shape
     try: # Read the image from the input topic:
         cv_image = bridge.imgmsg_to_cv2(data)
     except CvBridgeError, e:
             print e
-    
     frame = np.zeros((cv_image.shape[0],cv_image.shape[1],3),np.uint8)
     frame[:,:,0] = cv_image
     frame[:,:,1] = cv_image
     frame[:,:,2] = cv_image
     image_shape=[frame.shape[0],frame.shape[1]]
-    return image_shape
+    
 
 def BoundingBoxes_callback(data):
+    global BoundingBox
     cone_xmin = data.bounding_boxes[0].xmin
     cone_ymin = data.bounding_boxes[0].ymin #ymin
     cone_xmax = data.bounding_boxes[0].xmax #xmax
@@ -86,8 +87,7 @@ def BoundingBoxes_callback(data):
     cone_y_center = (cone_ymax+cone_ymin)/2
     cone_x_center = (cone_xmax+cone_xmin)/2
     cone_box_size = cal_boxsize(cone_xmin,cone_ymin,cone_xmax,cone_ymax)
-    
-    return  [cone_xmin,cone_ymin,cone_xmax,cone_ymax,cone_y_center,cone_x_center,cone_box_size,cone_class]
+    BoundingBox =  [cone_xmin,cone_ymin,cone_xmax,cone_ymax,cone_y_center,cone_x_center,cone_box_size,cone_class]
 
 def Cone_information(data):
     Blue_informations = []
@@ -122,8 +122,8 @@ if __name__ == '__main__':
     
     rospy.init_node('Track_mission', anonymous=True)
     bridge = CvBridge()
-    Ori_Image=rospy.Subscriber("darknet_ros/detection_image", Image, image_callback)
-    BoundingBox =rospy.Subscriber("darknet_ros/bounding_boxes", BoundingBoxes, BoundingBoxes_callback)
+    rospy.Subscriber("darknet_ros/detection_image", Image, image_callback)
+    rospy.Subscriber("darknet_ros/bounding_boxes", BoundingBoxes, BoundingBoxes_callback)
     image_publisher = rospy.Publisher("/final_image", Image, queue_size=100)
     control_publisher = rospy.Publisher("/Lane_ack_vel", AckermannDriveStamped, queue_size=100)
     rate = rospy.Rate(10)
@@ -134,7 +134,7 @@ if __name__ == '__main__':
             Blue_biggest_box = Select_biggest_box(Blue_informations)
             Yello_biggest_box = Select_biggest_box(Yello_informations) #make_point
             going_pixels = Make_pixel(Blue_biggest_box,Yello_biggest_box)
-            final_image, image_delta = find_delta(Ori_Image,going_pixels) #make_delta
+            final_image, image_delta = find_delta(image_shape,going_pixels) #make_delta
             print(image_delta)
 
             if (image_delta>28):
