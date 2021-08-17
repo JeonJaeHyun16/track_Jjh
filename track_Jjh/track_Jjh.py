@@ -12,7 +12,7 @@ sys.path.append('/opt/ros/melodic/lib/python2.7/dist-packages')
 import numpy as np
 import os.path
 import time
-import time
+import math
 import rospy
 import rospkg
 import cv_bridge
@@ -29,8 +29,115 @@ from cv_bridge import CvBridge, CvBridgeError
 BoundingBox = []
 image_shape = []
 
+def get_rad(theta, phi, gamma):
+    return (deg_to_rad(theta),
+            deg_to_rad(phi),
+            deg_to_rad(gamma))
 
-def find_delta(image_shape, going_pixels):
+def get_deg(rtheta, rphi, rgamma):
+    return (rad_to_deg(rtheta),
+            rad_to_deg(rphi),
+            rad_to_deg(rgamma))
+
+def deg_to_rad(deg):
+    return deg * math.pi / 180.0
+
+def rad_to_deg(rad):
+    return rad * 180.0 / math.pi
+
+
+def rotate_along_axis_inv(img, theta=0, phi=0, gamma=0, dx=0, dy=0, dz=0):
+    global focal
+    
+    # Get radius of rotation along 3 axes
+    rtheta, rphi, rgamma = get_rad(theta, phi, gamma)
+    
+    # Get ideal focal length on z axis
+    # Change this section to other axis if needed
+    d = np.sqrt(img.shape[0]**2 + img.shape[1]**2)
+    focal = d / (2 * np.sin(rgamma) if np.sin(rgamma) != 0 else 1)
+    dz = focal
+
+    # Get projection matrix
+    mat = get_M(img, rtheta, rphi, rgamma, dx, dy, dz)
+
+    T = np.array([  [1, 0, 0],
+                    [0, 1, -700],
+                    [0, 0, 1]])
+
+    M = np.dot(mat,T)
+
+    M_inv = np.linalg.inv(M)
+    
+    return cv2.warpPerspective(img, M_inv, (img.shape[1], img.shape[0]*3), flags=cv2.INTER_LINEAR)
+
+def rotate_along_axis(img, theta=0, phi=0, gamma=0, dx=0, dy=0, dz=0):
+    global focal
+    
+    # Get radius of rotation along 3 axes
+    rtheta, rphi, rgamma = get_rad(theta, phi, gamma)
+    
+    # Get ideal focal length on z axis
+    # Change this section to other axis if needed
+    d = np.sqrt(img.shape[0]**2 + img.shape[1]**2)
+    focal = d / (2 * np.sin(rgamma) if np.sin(rgamma) != 0 else 1)
+    dz = focal
+
+    # Get projection matrix
+    mat = get_M(img, rtheta, rphi, rgamma, dx, dy, dz)
+    
+    return cv2.warpPerspective(img, mat, (img.shape[1], img.shape[0]), flags=cv2.INTER_LINEAR)
+
+def get_M(img, theta, phi, gamma, dx, dy, dz):
+    global focal
+    
+    w = img.shape[1]
+    h = img.shape[0]
+    f = focal
+
+    # Projection 2D -> 3D matrix
+    A1 = np.array([ [1, 0, -w/2],
+                    [0, 1, -h/2],
+                    [0, 0, 1],
+                    [0, 0, 1]])
+    
+    # Rotation matrices around the X, Y, and Z axis
+    RX = np.array([ [1, 0, 0, 0],
+                    [0, np.cos(theta), -np.sin(theta), 0],
+                    [0, np.sin(theta), np.cos(theta), 0],
+                    [0, 0, 0, 1]])
+    
+    RY = np.array([ [np.cos(phi), 0, -np.sin(phi), 0],
+                    [0, 1, 0, 0],
+                    [np.sin(phi), 0, np.cos(phi), 0],
+                    [0, 0, 0, 1]])
+    
+    RZ = np.array([ [np.cos(gamma), -np.sin(gamma), 0, 0],
+                    [np.sin(gamma), np.cos(gamma), 0, 0],
+                    [0, 0, 1, 0],
+                    [0, 0, 0, 1]])
+
+    # Composed rotation matrix with (RX, RY, RZ)
+    R = np.dot(np.dot(RX, RY), RZ)
+
+    # Translation matrix
+    T = np.array([  [1, 0, 0, dx],
+                    [0, 1, 0, dy],
+                    [0, 0, 1, dz],
+                    [0, 0, 0, 1]])
+
+    # Projection 3D -> 2D matrix
+    A2 = np.array([ [f, 0, w/2, 0],
+                    [0, f, h/2, 0],
+                    [0, 0, 1, 0]])
+
+    # Final transformation matrix
+    return np.dot(A2, np.dot(T, np.dot(R, A1)))
+
+
+
+
+def find_delta(image_shape, going_pixels,line_image):
     
     ############################# angle1 ###################################
     #print(going_pixels[0]-(image_shape[1]/2))
@@ -81,6 +188,7 @@ def image_callback(data):
     frame = np.zeros((cv_image.shape[0],cv_image.shape[1],3),np.uint8)
     frame[:,:] = cv_image
     image_shape=[frame.shape[0],frame.shape[1]]
+    frame2 = rotate_along_axis_inv(frame, theta=93+180, dy = 20)
     
 
 def BoundingBoxes_callback(data):
@@ -109,27 +217,29 @@ def Cone_information(data):
     Yello_informations = []
     Blue_information = []
     Yello_information = []
-        for i in range(len(data)):
-            Class=data[i][7]
-            #print(Class)
-            if (Class =='blue'):
-                [blue_cone_xmin,blue_cone_ymin,blue_cone_xmax,blue_cone_ymax,blue_cone_y_center,blue_cone_x_center,blue_cone_box_size] = data[i][0:7]
-                Blue_information = [blue_cone_xmin,blue_cone_ymin,blue_cone_xmax,blue_cone_ymax,blue_cone_y_center,blue_cone_x_center,blue_cone_box_size]
-                #print(Blue_information)
-                Blue_informations.append(Blue_information)
-                #print(Blue_informations)
-                
-            elif (Class=='yellow'):
-                [yello_cone_xmin,yello_cone_ymin,yello_cone_xmax,yello_cone_ymax,yello_cone_y_center,yello_cone_x_center,yello_cone_box_size] = data[i][0:7]
-                Yello_information = [yello_cone_xmin,yello_cone_ymin,yello_cone_xmax,yello_cone_ymax,yello_cone_y_center,yello_cone_x_center,yello_cone_box_size]
-                #print(Yello_information)
-                Yello_informations.append(Yello_information)
-                #print(Yello_informations)
-            if(i ==len(data)-1 ):
-                print(Blue_informations,Yello_informations)
-                
-                return [Blue_informations,Yello_informations]
-    
+    for i in range(len(data)):
+        Class=data[i][7]
+        #print(Class)
+        if (Class =='blue'):
+            [blue_cone_xmin,blue_cone_ymin,blue_cone_xmax,blue_cone_ymax,blue_cone_y_center,blue_cone_x_center,blue_cone_box_size] = data[i][0:7]
+            Blue_information = [blue_cone_xmin,blue_cone_ymin,blue_cone_xmax,blue_cone_ymax,blue_cone_y_center,blue_cone_x_center,blue_cone_box_size]
+            #print(Blue_information)
+            Blue_informations.append(Blue_information)
+            #print(Blue_informations)
+            
+        elif (Class=='yellow'):
+            [yello_cone_xmin,yello_cone_ymin,yello_cone_xmax,yello_cone_ymax,yello_cone_y_center,yello_cone_x_center,yello_cone_box_size] = data[i][0:7]
+            Yello_information = [yello_cone_xmin,yello_cone_ymin,yello_cone_xmax,yello_cone_ymax,yello_cone_y_center,yello_cone_x_center,yello_cone_box_size]
+            #print(Yello_information)
+            Yello_informations.append(Yello_information)
+            #print(Yello_informations)
+        
+        if(i ==len(data)-1 ):
+            print(Blue_informations,Yello_informations)
+            return Blue_informations,Yello_informations
+
+        
+
     del BoundingBox [:]
     
 
@@ -157,7 +267,7 @@ if __name__ == '__main__':
     ackermann_cmd = AckermannDriveStamped()
     while (True):
         try:
-            [Blue_informations,Yello_informations]= Cone_information(BoundingBox)
+            Blue_informations,Yello_informations= Cone_information(BoundingBox)
             print(Blue_informations,Yello_informations)
             '''Blue_biggest_box = Select_biggest_box(Blue_informations)
             Yello_biggest_box = Select_biggest_box(Yello_informations) #make_point
