@@ -45,7 +45,7 @@ def deg_to_rad(deg):
 def rad_to_deg(rad):
     return rad * 180.0 / math.pi
 
-
+focal = 0
 def rotate_along_axis_inv(img, theta=0, phi=0, gamma=0, dx=0, dy=0, dz=0):
     global focal
     
@@ -186,9 +186,12 @@ def image_callback(data):
     cv_image = cv2.erode(cv_image, kernel, iterations=1)
     cv_image = cv2.dilate(cv_image, kernel, iterations=1)
     frame = np.zeros((cv_image.shape[0],cv_image.shape[1],3),np.uint8)
+    
     frame[:,:] = cv_image
     image_shape=[frame.shape[0],frame.shape[1]]
-    frame2 = rotate_along_axis_inv(frame, theta=93+180, dy = 20)
+    image_shape = rotate_along_axis_inv(frame, theta=93+180, dy = 20)
+    image_shape = np.deepcopy(image_shape)
+    
     
 
 def BoundingBoxes_callback(data):
@@ -203,8 +206,7 @@ def BoundingBoxes_callback(data):
         cone_class = data.bounding_boxes[i].Class
         cone_y_center = (cone_ymax+cone_ymin)/2
         cone_x_center = (cone_xmax+cone_xmin)/2
-        cone_box_size = cal_boxsize(cone_xmin,cone_ymin,cone_xmax,cone_ymax)
-        BoundingBox.append([cone_xmin,cone_ymin,cone_xmax,cone_ymax,cone_y_center,cone_x_center,cone_box_size,cone_class])
+        BoundingBox.append([cone_xmin,cone_ymin,cone_xmax,cone_ymax,cone_x_center,cone_y_center,cone_class])
     
     
     
@@ -213,23 +215,24 @@ def BoundingBoxes_callback(data):
 
 def Cone_information(data):
     #print(data)
+    global BoundingBox 
     Blue_informations = []
     Yello_informations = []
     Blue_information = []
     Yello_information = []
     for i in range(len(data)):
-        Class=data[i][7]
+        Class=data[i][6]
         #print(Class)
         if (Class =='blue'):
-            [blue_cone_xmin,blue_cone_ymin,blue_cone_xmax,blue_cone_ymax,blue_cone_y_center,blue_cone_x_center,blue_cone_box_size] = data[i][0:7]
-            Blue_information = [blue_cone_xmin,blue_cone_ymin,blue_cone_xmax,blue_cone_ymax,blue_cone_y_center,blue_cone_x_center,blue_cone_box_size]
+            [blue_cone_xmin,blue_cone_ymin,blue_cone_xmax,blue_cone_ymax,blue_cone_x_center,blue_cone_y_center] = data[i][0:6]
+            Blue_information = [blue_cone_xmin,blue_cone_ymin,blue_cone_xmax,blue_cone_ymax,blue_cone_x_center ,blue_cone_y_center]
             #print(Blue_information)
             Blue_informations.append(Blue_information)
             #print(Blue_informations)
             
         elif (Class=='yellow'):
-            [yello_cone_xmin,yello_cone_ymin,yello_cone_xmax,yello_cone_ymax,yello_cone_y_center,yello_cone_x_center,yello_cone_box_size] = data[i][0:7]
-            Yello_information = [yello_cone_xmin,yello_cone_ymin,yello_cone_xmax,yello_cone_ymax,yello_cone_y_center,yello_cone_x_center,yello_cone_box_size]
+            [yello_cone_xmin,yello_cone_ymin,yello_cone_xmax,yello_cone_ymax,yello_cone_x_center,yello_cone_y_center] = data[i][0:6]
+            image_shape = [yello_cone_xmin,yello_cone_ymin,yello_cone_xmax,yello_cone_ymax,yello_cone_x_center,yello_cone_y_center]
             #print(Yello_information)
             Yello_informations.append(Yello_information)
             #print(Yello_informations)
@@ -237,10 +240,11 @@ def Cone_information(data):
         if(i ==len(data)-1 ):
             print(Blue_informations,Yello_informations)
             return Blue_informations,Yello_informations
-
+    del BoundingBox [:]
+    
         
 
-    del BoundingBox [:]
+    
     
 
 def Select_biggest_box(data):
@@ -267,8 +271,12 @@ if __name__ == '__main__':
     ackermann_cmd = AckermannDriveStamped()
     while (True):
         try:
-            Blue_informations,Yello_informations= Cone_information(BoundingBox)
-            print(Blue_informations,Yello_informations)
+            image_shape = np.array(image_shape)
+            print(image_shape)
+            #informations= Cone_information(BoundingBox)
+            #print(informations)
+            #image_publisher.publish(bridge.cv2_to_imgmsg(image_shape)) #publish
+            
             '''Blue_biggest_box = Select_biggest_box(Blue_informations)
             Yello_biggest_box = Select_biggest_box(Yello_informations) #make_point
             going_pixels = Make_pixel(Blue_biggest_box,Yello_biggest_box)
