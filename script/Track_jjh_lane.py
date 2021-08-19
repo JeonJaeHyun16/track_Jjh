@@ -94,9 +94,9 @@ class Track_lanenet_detector():
         print(Yello_x_cen)
         
         original_img = cv_image.copy()
-        
-        blue_line_img = np.zero
-        yellow_line_img =None
+        h,w,c = original_img.shape
+        blue_line_img = np.zeros((h,w,c),np.uint8())
+        yellow_line_img = np.zeros((h,w,c),np.uint8())
         
         for i in range ((len(Blue_x_cen))-1):
             blue_line_img = draw_lines(original_img,
