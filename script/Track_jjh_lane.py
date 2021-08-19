@@ -30,6 +30,19 @@ from std_msgs.msg import Int16MultiArray
 from std_msgs.msg import MultiArrayLayout
 from geometry_msgs.msg import Point , PoseStamped
 
+def draw_lines(img, lines, color=[255, 0, 0], thickness=3):
+        line_img = np.zeros((img.shape[0],img.shape[1],3),dtype=np.uint8)
+        img = np.copy(img)
+        if lines is None:
+            return
+
+        for line in lines:
+            for x1, y1, x2, y2 in line:
+                cv2.line(line_img, (x1, y1), (x2, y2), color, thickness)
+
+        img = cv2.addWeighted(img, 0.8, line_img, 1.0, 0.0)
+
+        return img
 
 
 class Track_lanenet_detector():
@@ -62,8 +75,8 @@ class Track_lanenet_detector():
         #print(BoundingBoxes)
         Blue_informations,Yello_informations = self.Cone_information(BoundingBoxes)
         #print(Blue_informations,Yello_informations)
-        Blue_x_cen,Blue_y_cen = self.make_x_y_pixel(Blue_informations)
-        Yello_x_cen,Yello_y_cen = self.make_x_y_pixel(Yello_informations)
+        self.Blue_x_cen,self.Blue_y_cen = self.make_x_y_pixel(Blue_informations)
+        self.Yello_x_cen,self.Yello_y_cen = self.make_x_y_pixel(Yello_informations)
         
     
     def img_callback(self, data):
@@ -73,9 +86,19 @@ class Track_lanenet_detector():
             cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
         except CvBridgeError as e:
             print(e)
+        Blue_x_cen = self.Blue_x_cen
+        Blue_y_cen = self.Blue_y_cen
+        Yello_x_cen = self.Yello_x_cen
+        Yello_y_cen = self.Yello_y_cen
+        print(Blue_x_cen)
+        print(Yello_x_cen)
         
         original_img = cv_image.copy()
-        for i in range (len(Blue_x_cen))-1:
+        
+        blue_line_img = np.zero
+        yellow_line_img =None
+        
+        for i in range ((len(Blue_x_cen))-1):
             blue_line_img = draw_lines(original_img,
                 [[
                 [Blue_x_cen[i], Blue_y_cen[i], Blue_x_cen[i+1], Blue_y_cen[i+1]],
@@ -83,16 +106,16 @@ class Track_lanenet_detector():
                 ]],
                 [0,0,255],
                 3)
-        for i in range (len(Yello_x_cen))-1:
+        for i in range ((len(Yello_x_cen))-1):
             yellow_line_img = draw_lines(blue_line_img,
                 [[
                 [Yello_x_cen[i], Yello_y_cen[i], Yello_x_cen[i+1], Yello_y_cen[i+1]],
                 ]],
                 [0,0,255],
                 3)
-        cv2.namedWindow("ss")
-        cv2.imshow("ss", yellow_line_img)
-        cv2.waitKey(0)
+        #cv2.namedWindow("ss")
+        #cv2.imshow("ss", yellow_line_img)
+        #cv2.waitKey(0)
         out_img_msg = self.bridge.cv2_to_imgmsg(yellow_line_img, "32FC1")
         self.pub_image.publish(out_img_msg)
         #black_canvas = self.preprocessing(cv_image)
@@ -113,19 +136,7 @@ class Track_lanenet_detector():
         # cv2.waitKey(1)
         return image'''
 
-    def draw_lines(img, lines, color=[255, 0, 0], thickness=3):
-        line_img = np.zeros((img.shape[0],img.shape[1],3),dtype=np.uint8)
-        img = np.copy(img)
-        if lines is None:
-            return
-
-        for line in lines:
-            for x1, y1, x2, y2 in line:
-                cv2.line(line_img, (x1, y1), (x2, y2), color, thickness)
-
-        img = cv2.addWeighted(img, 0.8, line_img, 1.0, 0.0)
-
-        return img
+    
 
     def minmax_scale(self, input_arr):
         """
@@ -173,7 +184,7 @@ class Track_lanenet_detector():
             y_cen = data[i][5]
             x_cens.append(x_cen)
             y_cens.append(y_cen)
-        print(x_cens,y_cens)
+        #print(x_cens,y_cens)
         return x_cens,y_cens
 
 if __name__ == '__main__':
