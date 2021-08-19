@@ -1,0 +1,27 @@
+<launch>
+
+    <arg name="image_topic" default="/image_view/output"/> <!--/image_raw /video/lane /kitti/camera_gray_right/image_raw /video/lane/usb_cam/image_raw  /image_view/output-->
+    <arg name="output_image" default="/lane_images"/>
+    <arg name="output_lane" default="/Lane"/>
+    <!-- <arg name="weight_path" default="$(find lane_detector)/model/new_model/tusimple_lanenet_vgg.ckpt"/> -->
+    <!-- <arg name="weight_path" default="$(find lane_detector)/model/0710/tusimple_lanenet_vgg_2020-07-10-19-09-30.ckpt-34001"/> -->
+    <!-- <arg name="weight_path" default="$(find lane_detector)/model/20200518/tusimple_lanenet_vgg_2020-05-18-15-53-49.ckpt-84002"/> -->
+    <!-- <arg name="weight_path" default="$(find lane_detector)/model/20190516/tusimple_lanenet_vgg_2020-05-13-17-21-11.ckpt-80002"/> -->
+    <arg name="weight_path" default="/home/mds/catkin_ws/src/LaneNetRos/scripts/model/tusimple_lanenet_vgg/tusimple_lanenet_vgg_2021-07-20-16-01-06.ckpt-33001"/>
+
+    <arg name="use_gpu" default="1"/>
+    <arg name="lane_image_topic" default="/lane_image"/>
+
+    <node pkg="lane_detector" type="lanenet_node.py" name="lanenet_node" output="screen"> <!--lanenet_node.py-->
+        <param name="image_topic" value="$(arg image_topic)" />
+        <param name="output_image" value="$(arg output_image)" />
+        <param name="output_lane" value="$(arg output_lane)" />
+        <param name="weight_path" value="$(arg weight_path)" />
+        <param name="use_gpu" value="$(arg use_gpu)" />
+        <param name="lane_image_topic" value="$(arg lane_image_topic)" />
+    </node>
+
+    <node pkg="lane_detector" type="ros_lane_consumer_modi.py" name="lanenet_consumer">  <!--ros_lane_consumer_modi.py-->
+    </node>
+
+</launch>

@@ -6,9 +6,7 @@
 
 
 import sys
-sys.path.remove('/opt/ros/melodic/lib/python2.7/dist-packages')
 import cv2, time
-sys.path.append('/opt/ros/melodic/lib/python2.7/dist-packages')
 import numpy as np
 import os.path
 import time
@@ -137,7 +135,7 @@ def get_M(img, theta, phi, gamma, dx, dy, dz):
 
 
 
-def find_delta(image_shape, going_pixels,line_image):
+def find_delta(image_shape, going_pixels):
     
     ############################# angle1 ###################################
     #print(going_pixels[0]-(image_shape[1]/2))
@@ -178,19 +176,20 @@ def cal_boxsize(xmin,ymin,xmax,ymax):
 
 def image_callback(data):
     global image_shape
-    try: # Read the image from the input topic:
-        cv_image = bridge.imgmsg_to_cv2(data)
-    except CvBridgeError as e:
-        print(e)
+    try:
+          # Read the image from the input topic:
+        cv_image = bridge.imgmsg_to_cv2(data,"bgr8")
+    except CvBridgeError, e:
+        print e
     kernel = np.ones((3, 3), np.uint8)
     cv_image = cv2.erode(cv_image, kernel, iterations=1)
     cv_image = cv2.dilate(cv_image, kernel, iterations=1)
     frame = np.zeros((cv_image.shape[0],cv_image.shape[1],3),np.uint8)
     
-    frame[:,:] = cv_image
+    frame[:,:,:] = cv_image
     image_shape=[frame.shape[0],frame.shape[1]]
-    image_shape = rotate_along_axis_inv(frame, theta=93+180, dy = 20)
-    image_shape = np.deepcopy(image_shape)
+    cv2.imshow("ss", image_shape * 255)
+    
     
     
 
@@ -240,8 +239,7 @@ def Cone_information(data):
         if(i ==len(data)-1 ):
             print(Blue_informations,Yello_informations)
             return Blue_informations,Yello_informations
-    del BoundingBox [:]
-    
+    BoundingBox.clear()    
         
 
     
@@ -271,8 +269,8 @@ if __name__ == '__main__':
     ackermann_cmd = AckermannDriveStamped()
     while (True):
         try:
+            print(type(image_shape))
             image_shape = np.array(image_shape)
-            print(image_shape)
             #informations= Cone_information(BoundingBox)
             #print(informations)
             #image_publisher.publish(bridge.cv2_to_imgmsg(image_shape)) #publish
@@ -280,6 +278,7 @@ if __name__ == '__main__':
             '''Blue_biggest_box = Select_biggest_box(Blue_informations)
             Yello_biggest_box = Select_biggest_box(Yello_informations) #make_point
             going_pixels = Make_pixel(Blue_biggest_box,Yello_biggest_box)
+            going_pixels= [100,100]
             final_image, image_delta = find_delta(image_shape,going_pixels) #make_delta
             print(image_delta)
 
