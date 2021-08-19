@@ -95,19 +95,19 @@ class Track_lanenet_detector():
         
         original_img = cv_image.copy()
         h,w,c = original_img.shape
-        blue_line_img = np.zeros((h,w,c),np.uint8())
+        empty_img = np.zeros((h,w,c),np.uint8())
         yellow_line_img = np.zeros((h,w,c),np.uint8())
         
+        
         for i in range ((len(Blue_x_cen))-1):
-            blue_line_img = draw_lines(original_img,
+            empty_img = draw_lines(empty_img,
                 [[
                 [Blue_x_cen[i], Blue_y_cen[i], Blue_x_cen[i+1], Blue_y_cen[i+1]],
-               
                 ]],
                 [0,0,255],
                 3)
         for i in range ((len(Yello_x_cen))-1):
-            yellow_line_img = draw_lines(blue_line_img,
+            empty_img = draw_lines(empty_img,
                 [[
                 [Yello_x_cen[i], Yello_y_cen[i], Yello_x_cen[i+1], Yello_y_cen[i+1]],
                 ]],
@@ -116,7 +116,7 @@ class Track_lanenet_detector():
         #cv2.namedWindow("ss")
         #cv2.imshow("ss", yellow_line_img)
         #cv2.waitKey(0)
-        out_img_msg = self.bridge.cv2_to_imgmsg(yellow_line_img, "32FC1")
+        out_img_msg = self.bridge.cv2_to_imgmsg(empty_img, "8UC3")
         self.pub_image.publish(out_img_msg)
         #black_canvas = self.preprocessing(cv_image)
 
