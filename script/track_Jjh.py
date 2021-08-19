@@ -188,9 +188,13 @@ def image_callback(data):
     
     frame[:,:,:] = cv_image
     image_shape=[frame.shape[0],frame.shape[1]]
+<<<<<<< Updated upstream:script/track_Jjh.py
     cv2.imshow("ss", image_shape * 255)
     
     
+=======
+    image_shape = rotate_along_axis_inv(frame, theta=93+180, dy = 20)
+>>>>>>> Stashed changes:track_Jjh/track_Jjh.py
     
 
 def BoundingBoxes_callback(data):
@@ -293,7 +297,7 @@ if __name__ == '__main__':
             ackermann_cmd.drive.steering_angle = final_image_theta * math.pi / 180
             ackermann_cmd.drive.speed = 3.5
             control_publisher.publish(ackermann_cmd) #publish
-            image_publisher.publish(bridge.cv2_to_imgmsg(final_image)) #publish
+            image_publisher.publish(bridge.cv2_to_imgmsg(final_image)) #publish #nparry가 아니라고 나돈
             if cv2.waitKey(1) == ord('q'):
                 break'''
 

@@ -45,6 +45,8 @@ class Track_lanenet_detector():
         sub_boundingBoxes = rospy.Subscriber(self.boundingboxes_topic, BoundingBoxes, self.BoundingBoxes_callback)
         self.pub_image = rospy.Publisher(self.output_image, Image, queue_size=1)
         self.pub_ist_image = rospy.Publisher(self.output_image, Image, queue_size=1)
+        self.Blue_x_cen,self.Blue_y_cen = [],[] #????
+        self.Yello_x_cen,self.Yello_y_cen = [],[] #???
 
     def BoundingBoxes_callback(self, data):
         BoundingBoxes = []
@@ -73,7 +75,28 @@ class Track_lanenet_detector():
             print(e)
         
         original_img = cv_image.copy()
-        resized_image = self.preprocessing(cv_image)
+        for i in range (len(Blue_x_cen))-1:
+            blue_line_img = draw_lines(original_img,
+                [[
+                [Blue_x_cen[i], Blue_y_cen[i], Blue_x_cen[i+1], Blue_y_cen[i+1]],
+               
+                ]],
+                [0,0,255],
+                3)
+        for i in range (len(Yello_x_cen))-1:
+            yellow_line_img = draw_lines(blue_line_img,
+                [[
+                [Yello_x_cen[i], Yello_y_cen[i], Yello_x_cen[i+1], Yello_y_cen[i+1]],
+                ]],
+                [0,0,255],
+                3)
+        cv2.namedWindow("ss")
+        cv2.imshow("ss", yellow_line_img)
+        cv2.waitKey(0)
+        out_img_msg = self.bridge.cv2_to_imgmsg(yellow_line_img, "32FC1")
+        self.pub_image.publish(out_img_msg)
+        #black_canvas = self.preprocessing(cv_image)
+
         #cv2.namedWindow("ss")
         #cv2.imshow("ss", resized_image)
         #cv2.waitKey(0)
@@ -82,15 +105,27 @@ class Track_lanenet_detector():
         #print(1/(time.time() - t1))
         #print(time.time())
         
-    def preprocessing(self, img):
-        image = cv2.resize(img, (512, 256), interpolation=cv2.INTER_LINEAR)
-        image = image / 127.5
+    '''def preprocessing(self, img):
+        h,w,c = img.shape
+        image = np.zeros((h,w,c),np.uint8)
         # cv2.namedWindow("ss")
         # cv2.imshow("ss", image)
         # cv2.waitKey(1)
-        return image
+        return image'''
 
+    def draw_lines(img, lines, color=[255, 0, 0], thickness=3):
+        line_img = np.zeros((img.shape[0],img.shape[1],3),dtype=np.uint8)
+        img = np.copy(img)
+        if lines is None:
+            return
 
+        for line in lines:
+            for x1, y1, x2, y2 in line:
+                cv2.line(line_img, (x1, y1), (x2, y2), color, thickness)
+
+        img = cv2.addWeighted(img, 0.8, line_img, 1.0, 0.0)
+
+        return img
 
     def minmax_scale(self, input_arr):
         """
