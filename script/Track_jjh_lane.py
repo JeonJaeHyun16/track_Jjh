@@ -72,15 +72,12 @@ class Track_lanenet_detector():
             cone_y_center = (cone_ymax+cone_ymin)/2
             cone_x_center = (cone_xmax+cone_xmin)/2
             BoundingBoxes.append([cone_xmin,cone_ymin,cone_xmax,cone_ymax,cone_x_center,cone_y_center,cone_class])
-        #print(BoundingBoxes)
         Blue_informations,Yello_informations = self.Cone_information(BoundingBoxes)
-        #print(Blue_informations,Yello_informations)
         self.Blue_x_cen,self.Blue_y_cen = self.make_x_y_pixel(Blue_informations)
         self.Yello_x_cen,self.Yello_y_cen = self.make_x_y_pixel(Yello_informations)
         
     
     def img_callback(self, data):
-        # print(time.time())
         t1 = time.time()
         try:
             cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
@@ -90,13 +87,17 @@ class Track_lanenet_detector():
         Blue_y_cen = self.Blue_y_cen
         Yello_x_cen = self.Yello_x_cen
         Yello_y_cen = self.Yello_y_cen
+        Blue_x_cen.sort()
+        Blue_y_cen.sort()
+        Yello_x_cen.sort()
+        Yello_y_cen.sort()
+        
         print(Blue_x_cen)
         print(Yello_x_cen)
         
         original_img = cv_image.copy()
         h,w,c = original_img.shape
         empty_img = np.zeros((h,w,c),np.uint8())
-        yellow_line_img = np.zeros((h,w,c),np.uint8())
         
         
         for i in range ((len(Blue_x_cen))-1):
@@ -113,28 +114,12 @@ class Track_lanenet_detector():
                 ]],
                 [0,0,255],
                 3)
-        #cv2.namedWindow("ss")
-        #cv2.imshow("ss", yellow_line_img)
-        #cv2.waitKey(0)
+        
         out_img_msg = self.bridge.cv2_to_imgmsg(empty_img, "8UC3")
         self.pub_image.publish(out_img_msg)
-        #black_canvas = self.preprocessing(cv_image)
-
-        #cv2.namedWindow("ss")
-        #cv2.imshow("ss", resized_image)
-        #cv2.waitKey(0)
-        #out_img_msg = self.bridge.cv2_to_imgmsg(mask_image2, "32FC1")
-        #self.pub_image.publish(out_img_msg)
-        #print(1/(time.time() - t1))
-        #print(time.time())
         
-    '''def preprocessing(self, img):
-        h,w,c = img.shape
-        image = np.zeros((h,w,c),np.uint8)
-        # cv2.namedWindow("ss")
-        # cv2.imshow("ss", image)
-        # cv2.waitKey(1)
-        return image'''
+        
+  
 
     
 
