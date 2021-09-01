@@ -557,9 +557,9 @@ class TrackConsumer:
         frame = np.zeros((cv_image.shape[0],cv_image.shape[1],3),np.uint8)
 
 
-        frame[:,:,0] = cv_image
-        frame[:,:,1] = cv_image
-        frame[:,:,2] = cv_image
+        frame[:,:] = cv_image
+        #frame[:,:,1] = cv_image
+        #frame[:,:,2] = cv_image
 
         image_shape=[frame.shape[0],frame.shape[1]]
 

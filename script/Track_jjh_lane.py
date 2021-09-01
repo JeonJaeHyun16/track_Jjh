@@ -103,14 +103,14 @@ class Track_lanenet_detector():
         for i in range ((len(Blue_x_cen))-1):
             empty_img = draw_lines(empty_img,
                 [[
-                [Blue_x_cen[i], Blue_y_cen[i], Blue_x_cen[i+1], Blue_y_cen[i+1]],
+                [int(Blue_x_cen[i]), int(Blue_y_cen[i]), int(Blue_x_cen[i+1]), int(Blue_y_cen[i+1])],
                 ]],
                 [0,0,255],
                 3)
         for i in range ((len(Yello_x_cen))-1):
             empty_img = draw_lines(empty_img,
                 [[
-                [Yello_x_cen[i], Yello_y_cen[i], Yello_x_cen[i+1], Yello_y_cen[i+1]],
+                [int(Yello_x_cen[i]), int(Yello_y_cen[i]), int(Yello_x_cen[i+1]), int(Yello_y_cen[i+1])],
                 ]],
                 [0,0,255],
                 3)
@@ -177,3 +177,4 @@ if __name__ == '__main__':
     rospy.init_node('TracK_lanenet_node')
     Track_lanenet_detector()
     rospy.spin()
+
